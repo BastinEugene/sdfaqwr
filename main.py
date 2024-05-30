@@ -3,7 +3,7 @@ import streamlit as st
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, LabelEncoder
 from sklearn.ensemble import IsolationForest, RandomForestClassifier, GradientBoostingClassifier, VotingClassifier, \
-    GradientBoostingRegressor
+    GradientBoostingRegressor, RandomForestRegressor, VotingRegressor
 from statsmodels.tsa.arima.model import ARIMA
 import numpy as np
 import io
@@ -111,28 +111,39 @@ def clean_data(data):
         # Выделение числовых данных для модели
         X = data.select_dtypes(include=[np.number]).copy()
 
-        # Обучение моделей для очистки данных
-        clf1 = RandomForestClassifier(n_estimators=50, random_state=1)
-        clf2 = GradientBoostingClassifier(n_estimators=50, random_state=1)
-        clf = VotingClassifier(estimators=[('rf', clf1), ('gb', clf2)], voting='soft')
+        # Определение целевого признака (анализируем все числовые столбцы)
+        target_columns = X.columns
 
-        iso = IsolationForest(contamination=0.1, random_state=1)
-        preds = iso.fit_predict(X)
+        # Обучение моделей для каждого числового столбца
+        for target in target_columns:
+            y = X[target]
+            X_train = X.drop(columns=[target])
+            reg1 = RandomForestRegressor(n_estimators=50, random_state=1)
+            reg2 = GradientBoostingRegressor(n_estimators=50, random_state=1)
+            ensemble_reg = VotingRegressor(estimators=[('rf', reg1), ('gb', reg2)])
 
-        # Добавление метки аномалии и очистка данных
-        data['anomaly'] = preds
-        data_clean = data[data['anomaly'] != -1].copy()
-        data_clean = data_clean.drop(columns=['anomaly'])
+            # Обучение ансамблевой модели
+            ensemble_reg.fit(X_train, y)
+
+            # Предсказание и определение аномалий
+            preds = ensemble_reg.predict(X_train)
+
+            # Вычисление отклонений и метки аномалии
+            errors = np.abs(preds - y)
+            threshold = np.mean(errors) + 3 * np.std(errors)
+            data['anomaly'] = np.where(errors > threshold, -1, 1)
+
+            # Очистка данных
+            data_clean = data[data['anomaly'] != -1].copy()
+            data_clean = data_clean.drop(columns=['anomaly'])
 
         # Удаление строк с пропусками
         data_clean = data_clean.dropna().reset_index(drop=True)
 
         return data_clean
     except Exception as e:
-        st.error(f"Ошибка при очистке данных: {e}")
+        print(f"Ошибка при очистке данных: {e}")
         return data
-
-
 
 def encode_categorical_data(data):
     try:
