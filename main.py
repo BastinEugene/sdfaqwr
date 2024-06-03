@@ -2,8 +2,7 @@ import pandas as pd
 import streamlit as st
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, LabelEncoder
-from sklearn.ensemble import IsolationForest, RandomForestClassifier, GradientBoostingClassifier, VotingClassifier, \
-    GradientBoostingRegressor, RandomForestRegressor, VotingRegressor
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, VotingRegressor
 from statsmodels.tsa.arima.model import ARIMA
 import numpy as np
 import io
@@ -196,9 +195,6 @@ def main():
             st.write("Данные загружены успешно. Нажмите кнопку ниже, чтобы начать обработку данных.")
             if st.button("Начать обработку данных"):
                 data = standardize_data(data)
-                with st.expander("Данные после стандартизации"):
-                    st.write(data.tail(4))
-                    export_data(data, "standardized")
 
                 data = fill_missing_values(data)
                 with st.expander("Данные после заполнения пропусков"):
